@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coverage Determination Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-light: #f3f4f6;
+            --gray-border: #e5e7eb;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
+        }
+
+        .search-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-group input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-border);
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .search-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .search-group button {
+            padding: 12px 32px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .search-group button:hover {
+            background: var(--primary-dark);
+        }
+
+        .search-group button:active {
+            transform: scale(0.98);
+        }
+
+        .loading {
+            text-align: center;
+            color: var(--primary);
+            font-size: 1.1em;
+            padding: 20px;
+            display: none;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: var(--danger);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--gray-light);
+        }
+
+        .claim-number {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .status-complete {
+            background: #d1fae5;
+            color: var(--success);
+        }
+
+        .status-incomplete {
+            background: #fef3c7;
+            color: var(--warning);
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .result-item {
+            background: var(--gray-light);
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .result-item-label {
+            font-size: 0.85em;
+            color: var(--text-light);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .result-item-value {
+            font-size: 1.1em;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .reason-section {
+            background: var(--gray-light);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .reason-label {
+            font-size: 0.85em;
+            color: var(--text-light);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .reason-text {
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        .evidence-section {
+            margin-top: 25px;
+        }
+
+        .section-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .evidence-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .evidence-item {
+            background: var(--gray-light);
+            padding: 14px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .evidence-source {
+            font-size: 0.85em;
+            color: var(--text-light);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .evidence-quote {
+            color: var(--text-dark);
+            font-style: italic;
+            margin-bottom: 6px;
+            line-height: 1.5;
+        }
+
+        .evidence-date {
+            font-size: 0.8em;
+            color: var(--text-light);
+        }
+
+        .blockers-section {
+            margin-top: 25px;
+        }
+
+        .empty-blockers {
+            background: #d1fae5;
+            color: var(--success);
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .blocker-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .blocker-item {
+            background: #fee2e2;
+            color: var(--danger);
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid var(--danger);
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+
+        .no-results-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--gray-border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: var(--success);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .search-group {
+                flex-direction: column;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .result-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Coverage Determination</h1>
+            <p>Search and view claim coverage analysis</p>
+        </div>
+
+        <div class="search-box">
+            <div class="search-group">
+                <input
+                    type="text"
+                    id="claimInput"
+                    placeholder="Enter claim (workkard) ID, e.g. 517796"
+                    onkeypress="handleKeyPress(event)"
+                >
+                <button onclick="searchClaim()">Search</button>
+            </div>
+            <div class="loading" id="loading">⏳ Reading claim notes and asking the AI — this can take a minute...</div>
+            <div class="error" id="error"></div>
+        </div>
+
+        <div class="results" id="results">
+            <div class="result-card" id="resultCard"></div>
+        </div>
+
+        <div class="no-results" id="noResults">
+            <div class="no-results-icon">🔍</div>
+            <p>Enter a claim number and click search to view coverage determination details</p>
+        </div>
+    </div>
+
+    <script>
+        const API_ENDPOINT = 'https://bellowslike-katharina-humorless.ngrok-free.dev/api/coverage-determination'; // Your ngrok endpoint
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                searchClaim();
+            }
+        }
+
+        function searchClaim() {
+            const claimId = document.getElementById('claimInput').value.trim();
+
+            if (!claimId) {
+                showError('Please enter a claim ID');
+                return;
+            }
+
+            showLoading(true);
+            hideError();
+
+            // Construct the endpoint URL
+            const url = `${API_ENDPOINT}/${claimId}`;
+
+            fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true' } })
+                .then(async response => {
+                    if (!response.ok) {
+                        let message = `HTTP error! status: ${response.status}`;
+                        try {
+                            message = (await response.json()).error || message;
+                        } catch (e) {
+                            console.error('Error body is not JSON:', e);
+                        }
+                        throw new Error(message);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    showLoading(false);
+                    displayResults(data, claimId);
+                })
+                .catch(error => {
+                    showLoading(false);
+                    console.error('Error:', error);
+                    showError(`Failed to fetch claim details: ${error.message}`);
+                });
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+
+        function displayResults(data, claimId) {
+            document.getElementById('noResults').style.display = 'none';
+
+            const statusClass = data.coverage_determination_complete ? 'status-complete' : 'status-incomplete';
+            const statusText = data.coverage_determination_complete ? '✓ Complete' : '⏳ Incomplete';
+
+            let evidenceHTML = '';
+            if (data.evidence && data.evidence.length > 0) {
+                evidenceHTML = data.evidence.map(e => `
+                    <div class="evidence-item">
+                        <div class="evidence-source">${e.source}</div>
+                        <div class="evidence-quote">"${e.quote}"</div>
+                        ${e.dated ? `<div class="evidence-date">📅 ${e.dated}</div>` : ''}
+                    </div>
+                `).join('');
+            } else {
+                evidenceHTML = '<p style="color: var(--text-light);">No evidence items</p>';
+            }
+
+            let blockersHTML = '';
+            if (data.blockers && data.blockers.length > 0) {
+                blockersHTML = data.blockers.map(b => `
+                    <div class="blocker-item">⚠️ ${b}</div>
+                `).join('');
+            } else {
+                blockersHTML = '<div class="empty-blockers">✓ No blockers</div>';
+            }
+
+            const html = `
+                <div class="result-header">
+                    <div class="claim-number">Claim ID ${claimId}</div>
+                    <div class="status-badge ${statusClass}">${statusText}</div>
+                </div>
+
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-item-label">Coverage Determination</div>
+                        <div class="result-item-value">${data.coverage_determination_complete ? 'Yes' : 'No'}</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-item-label">Basis</div>
+                        <div class="result-item-value">${capitalize(data.basis)}</div>
+                    </div>
+                </div>
+
+                <div class="reason-section">
+                    <div class="reason-label">📝 Reason</div>
+                    <div class="reason-text">${data.reason}</div>
+                </div>
+
+                <div class="evidence-section">
+                    <div class="section-title">📄 Evidence</div>
+                    <div class="evidence-list">
+                        ${evidenceHTML}
+                    </div>
+                </div>
+
+                <div class="blockers-section">
+                    <div class="section-title">🚫 Blockers</div>
+                    ${blockersHTML}
+                </div>
+            `;
+
+            document.getElementById('resultCard').innerHTML = html;
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function capitalize(str) {
+            return str.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+    </script>
+</body>
+</html>
